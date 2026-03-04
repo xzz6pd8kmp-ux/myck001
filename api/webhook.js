@@ -1,12 +1,10 @@
- import lark from '@larksuiteoapi/node-sdk';
+import lark from '@larksuiteoapi/node-sdk';
   import OpenAI from 'openai';
-  import crypto from 'crypto';
 
   const config = {
     feishu: {
       appId: process.env.FEISHU_APP_ID,
-      appSecret: process.env.FEISHU_APP_SECRET,
-      verificationToken: process.env.FEISHU_VERIFICATION_TOKEN
+      appSecret: process.env.FEISHU_APP_SECRET
     },
     table: {
       appToken: process.env.TABLE_APP_TOKEN,
@@ -30,19 +28,6 @@
     if (config.openai.enabled && !openai) {
       openai = new OpenAI({ apiKey: config.openai.apiKey });
     }
-  }
-
-  // 飞书签名验证
-  function verifySignature(timestamp, nonce, body, signature) {
-    if (!config.feishu.verificationToken) {
-      console.warn('⚠️ FEISHU_VERIFICATION_TOKEN 未配置，跳过签名验证');
-      return true; // 如果未配置 token，暂时跳过验证
-    }
-
-    const content = timestamp + nonce + config.feishu.verificationToken + body;
-    const hash = crypto.createHash('sha256').update(content).digest('hex');
-
-    return hash === signature;
   }
 
   function extractUrls(text) {
@@ -137,23 +122,14 @@
     }
 
     if (req.method === 'POST') {
-      // 验证飞书签名
-      const timestamp = req.headers['x-lark-request-timestamp'];
-      const nonce = req.headers['x-lark-request-nonce'];
-      const signature = req.headers['x-lark-signature'];
-      const bodyStr = JSON.stringify(req.body);
-
-      if (signature && !verifySignature(timestamp, nonce, bodyStr, signature)) {
-        console.error('❌ 签名验证失败');
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-
       const body = req.body;
 
+      // 飞书 URL 验证
       if (body.type === 'url_verification') {
         return res.json({ challenge: body.challenge });
       }
 
+      // 处理消息事件
       if (body.header?.event_type === 'im.message.receive_v1') {
         setImmediate(() => handleMessage(body.event.message));
         return res.json({ code: 0 });
@@ -164,5 +140,6 @@
 
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
 
 
