@@ -1,4 +1,3 @@
-
   import express from 'express';
   import lark from '@larksuiteoapi/node-sdk';
   import OpenAI from 'openai';
@@ -132,17 +131,28 @@
 
     const body = req.body;
 
+    // 添加详细日志
+    console.log('=== 收到飞书请求 ===');
+    console.log('完整请求体:', JSON.stringify(body, null, 2));
+    console.log('请求类型:', body.type);
+    console.log('Challenge:', body.challenge);
+
     // 飞书 URL 验证
     if (body.type === 'url_verification') {
-      return res.json({ challenge: body.challenge });
+      console.log('>>> 这是验证请求，返回 challenge');
+      const response = { challenge: body.challenge };
+      console.log('>>> 返回内容:', JSON.stringify(response));
+      return res.json(response);
     }
 
     // 处理消息事件
     if (body.header?.event_type === 'im.message.receive_v1') {
+      console.log('>>> 这是消息事件');
       setImmediate(() => handleMessage(body.event.message));
       return res.json({ code: 0 });
     }
 
+    console.log('>>> 未知请求类型');
     return res.json({ code: 0 });
   });
 
