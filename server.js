@@ -1,4 +1,4 @@
-  import express from 'express';
+ import express from 'express';
   import lark from '@larksuiteoapi/node-sdk';
   import OpenAI from 'openai';
 
@@ -10,7 +10,8 @@
   const config = {
     feishu: {
       appId: process.env.FEISHU_APP_ID,
-      appSecret: process.env.FEISHU_APP_SECRET
+      appSecret: process.env.FEISHU_APP_SECRET,
+      encryptKey: process.env.FEISHU_ENCRYPT_KEY
     },
     table: {
       appToken: process.env.TABLE_APP_TOKEN,
@@ -28,7 +29,8 @@
     if (!client) {
       client = new lark.Client({
         appId: config.feishu.appId,
-        appSecret: config.feishu.appSecret
+        appSecret: config.feishu.appSecret,
+        encryptKey: config.feishu.encryptKey
       });
     }
     if (config.openai.enabled && !openai) {
@@ -129,7 +131,22 @@
   app.post('/webhook/event', async (req, res) => {
     init();
 
-    const body = req.body;
+    let body = req.body;
+
+    // 如果是加密消息，先解密
+    if (body.encrypt) {
+      console.log('=== 收到加密消息，正在解密 ===');
+      try {
+        const decrypted = JSON.parse(
+          client.decrypt(body.encrypt)
+        );
+        body = decrypted;
+        console.log('✅ 解密成功');
+      } catch (err) {
+        console.error('❌ 解密失败:', err.message);
+        return res.json({ code: 1, message: '解密失败' });
+      }
+    }
 
     // 添加详细日志
     console.log('=== 收到飞书请求 ===');
@@ -159,3 +176,5 @@
   app.listen(PORT, () => {
     console.log(`🐿️ SquirrelStash 运行在端口 ${PORT}`);
   });
+
+
