@@ -1,6 +1,7 @@
  import express from 'express';
   import lark from '@larksuiteoapi/node-sdk';
   import OpenAI from 'openai';
+  import crypto from 'crypto';
 
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -23,16 +24,21 @@
     }
   };
 
-  let client, openai;
+  let client, openai, cipher;
 
   function init() {
     if (!client) {
       client = new lark.Client({
         appId: config.feishu.appId,
-        appSecret: config.feishu.appSecret,
-        encryptKey: config.feishu.encryptKey
+        appSecret: config.feishu.appSecret
       });
     }
+
+    // 初始化加密器
+    if (!cipher && config.feishu.encryptKey) {
+      cipher = new lark.AESCipher(config.feishu.encryptKey);
+    }
+
     if (config.openai.enabled && !openai) {
       openai = new OpenAI({ apiKey: config.openai.apiKey });
     }
@@ -137,13 +143,12 @@
     if (body.encrypt) {
       console.log('=== 收到加密消息，正在解密 ===');
       try {
-        const decrypted = JSON.parse(
-          client.decrypt(body.encrypt)
-        );
-        body = decrypted;
+        const decryptedStr = cipher.decrypt(body.encrypt);
+        body = JSON.parse(decryptedStr);
         console.log('✅ 解密成功');
       } catch (err) {
         console.error('❌ 解密失败:', err.message);
+        console.error('❌ 错误详情:', err);
         return res.json({ code: 1, message: '解密失败' });
       }
     }
@@ -176,5 +181,7 @@
   app.listen(PORT, () => {
     console.log(`🐿️ SquirrelStash 运行在端口 ${PORT}`);
   });
+
+
 
 
