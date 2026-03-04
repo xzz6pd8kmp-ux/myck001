@@ -73,32 +73,39 @@
     }
   }
 
-  async function saveToTable(data) {
+async function saveToTable(data) {
+    const recordData = {
+      '链接URL': data.url,
+      '标题': data.title || data.url,
+      '分享时间': Date.now(),
+      '原作者': data.author || '未知',
+      '内容方向': data.direction || '其他',
+      '标签': data.tags || [],
+      '摘要': data.summary || '',
+      '分享者': data.sharedBy || '',
+      '群组': data.groupName || ''
+    };
+
+    console.log('>>> 准备保存的数据:', JSON.stringify(recordData, null, 2));
+
     try {
-      await client.bitable.appTableRecord.create({
+      const result = await client.bitable.appTableRecord.create({
         path: {
           app_token: config.table.appToken,
           table_id: config.table.tableId
         },
         data: {
-          fields: {
-            '链接URL': data.url,
-            '标题': data.title || data.url,
-            '分享时间': Date.now(),
-            '原作者': data.author || '未知',
-            '内容方向': data.direction || '其他',
-            '标签': data.tags || [],
-            '摘要': data.summary || '',
-            '分享者': data.sharedBy || '',
-            '群组': data.groupName || ''
-          }
+          fields: recordData
         }
       });
       console.log('✅ 保存成功:', data.url);
+      console.log('✅ 返回的记录ID:', result.data?.record_id);
     } catch (err) {
       console.error('❌ 保存失败:', err.message);
+      console.error('❌ 完整错误:', JSON.stringify(err.response?.data || err, null, 2));
     }
   }
+
 
   async function handleMessage(msg) {
     if (msg.message_type !== 'text') return;
